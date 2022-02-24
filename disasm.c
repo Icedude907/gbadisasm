@@ -408,6 +408,9 @@ static void analyze(void)
                 count = cs_disasm(sCapstone, gInputFileBuffer + addr - ROM_LOAD_ADDR, labelAddr == 0 ? 0x1000 : labelAddr - addr, addr, 0, &insn);
                 for (i = 0; i < count; i++)
                 {
+                    uint32_t nextAddr = next_label_addr(addr);
+
+                    if (labelAddr > nextAddr) labelAddr = nextAddr;
                     if (labelAddr <= addr && labelAddr != 0)
                         break;
                   no_inc:
