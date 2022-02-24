@@ -295,9 +295,9 @@ static void jump_table_state_machine(const struct cs_insn *insn, uint32_t addr)
 }
 
 // handle mov lr, pc; bx rX
-static bool is_gs_func_call(const cs_insn *insn) // should be called only when there's at least one function following
+static bool is_gs_func_call(const cs_insn *insn, uint32_t addr, int type) // should be called only when there's at least one function following
 {
-    return insn[0].id == ARM_INS_MOV
+    if (insn[0].id == ARM_INS_MOV
         && insn[0].detail->arm.cc == ARM_CC_AL
         && insn[0].detail->arm.op_count == 2
         && insn[0].detail->arm.operands[0].type == ARM_OP_REG
@@ -305,7 +305,23 @@ static bool is_gs_func_call(const cs_insn *insn) // should be called only when t
         && insn[0].detail->arm.operands[1].type == ARM_OP_REG
         && insn[0].detail->arm.operands[1].reg == ARM_REG_PC
         && insn[0].detail->arm.operands[1].shift.type == ARM_SFT_INVALID
-        && insn[1].id == ARM_INS_BX; // Let's be strict for now. 
+        && insn[1].id == ARM_INS_BX) // Let's be strict for now. 
+        return true;
+    if (insn[0].id == ARM_INS_ADD
+        && insn[0].detail->arm.cc == ARM_CC_AL
+        && insn[0].detail->arm.op_count == 3
+        && insn[0].detail->arm.operands[0].type == ARM_OP_REG
+        && insn[0].detail->arm.operands[0].reg == ARM_REG_LR
+        && insn[0].detail->arm.operands[1].type == ARM_OP_REG
+        && insn[0].detail->arm.operands[1].reg == ARM_REG_PC
+        && insn[0].detail->arm.operands[2].type == ARM_OP_IMM)
+    {
+        if (insn[0].detail->arm.operands[2].imm == 0)
+            return true;
+        if (!lookup_label(addr + insn[0].detail->arm.operands[2].imm))
+            gLabels[disasm_add_label(addr + insn[0].detail->arm.operands[2].imm, type, NULL)].branchType = BRANCH_TYPE_B;
+    }
+    return false;
 }
 
 static void renew_or_add_new_func_label(int type, uint32_t word)
@@ -449,7 +465,7 @@ static void analyze(void)
                         {
                             struct Label *label_p;
 
-                            if (i && is_gs_func_call(&insn[i-1])) continue;
+                            if (i && is_gs_func_call(&insn[i-1], addr, type)) continue;
 
                             // It's possible that handwritten code with different mode follows. 
                             // However, this only causes problem when the address following is
