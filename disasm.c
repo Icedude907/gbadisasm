@@ -506,9 +506,9 @@ static void analyze(void)
                 count = cs_disasm(sCapstone, gInputFileBuffer + addr - ROM_LOAD_ADDR, labelAddr == 0 ? 0x1000 : labelAddr - addr, addr, 0, &insn);
                 for (i = 0; i < count; i++)
                 {
-                    uint32_t nextAddr = next_label_addr(addr);
+                    //uint32_t nextAddr = next_label_addr(addr);
 
-                    if (labelAddr > nextAddr) labelAddr = nextAddr;
+                    //if (labelAddr > nextAddr) labelAddr = nextAddr;
                     if (labelAddr <= addr && labelAddr != 0)
                         break;
                   no_inc:
@@ -929,8 +929,9 @@ static void print_disassembly(void)
     {
         if (i+1 < gLabelsCount && gLabels[i].inactive)
         {
+            // fprintf(stderr, "removing label: 0x%x\n", gLabels[i].addr);
             rec_free_dep_nodes(gLabels[i].deps.next);
-            memmove(&gLabels[i+1], &gLabels[i], gLabelsCount-- - i - 1);
+            memmove(&gLabels[i], &gLabels[i+1], sizeof(struct Label) * (gLabelsCount-- - i - 1));
             --i; // don't increment i
         }
     }
