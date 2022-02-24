@@ -294,6 +294,20 @@ static void jump_table_state_machine(const struct cs_insn *insn, uint32_t addr)
     sJumpTableState++;
 }
 
+// handle mov lr, pc; bx rX
+static bool is_gs_func_call(const cs_insn *insn) // should be called only when there's at least one function following
+{
+    return insn[0].id == ARM_INS_MOV
+        && insn[0].detail->arm.cc == ARM_CC_AL
+        && insn[0].detail->arm.op_count == 2
+        && insn[0].detail->arm.operands[0].type == ARM_OP_REG
+        && insn[0].detail->arm.operands[0].reg == ARM_REG_LR
+        && insn[0].detail->arm.operands[1].type == ARM_OP_REG
+        && insn[0].detail->arm.operands[1].reg == ARM_REG_PC
+        && insn[0].detail->arm.operands[1].shift.type == ARM_SFT_INVALID
+        && insn[1].id == ARM_INS_BX; // Let's be strict for now. 
+}
+
 static void renew_or_add_new_func_label(int type, uint32_t word)
 {
     if (word & ROM_LOAD_ADDR)
@@ -431,6 +445,8 @@ static void analyze(void)
                         if (is_func_return(&insn[i]))
                         {
                             struct Label *label_p;
+
+                            if (i && is_gs_func_call(&insn[i-1])) continue;
 
                             // It's possible that handwritten code with different mode follows. 
                             // However, this only causes problem when the address following is
