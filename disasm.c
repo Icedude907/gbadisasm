@@ -324,6 +324,8 @@ static void add_dep_to_label(struct Label *pool, struct Label *func)
         if ((*cur)->label == func)
             return;
     *cur = malloc(sizeof(struct DepNode));
+    if (!*cur)
+        fatal_error("failed to alloc buffer for pool 0x%x and function 0x%x", pool->addr, func->addr);
     (*cur)->label = func;
     (*cur)->next = NULL;
 }
@@ -368,7 +370,10 @@ static void remove_labels_for_fake_func_dep(struct Label *fake)
     {
         if (scan_func_in_deps(&gLabels[i], fake))
         {
-            find_prev_label(&gLabels[i])->processed = false;
+            struct Label *label = find_prev_label(&gLabels[i]);
+
+            if (label)
+                label->processed = false;
             remove_label(&gLabels[i]);
         }
     }
@@ -707,6 +712,8 @@ static void analyze(void)
                                         {
                                             assert(!*toAlloc);
                                             *toAlloc = malloc(sizeof(struct DepNode));
+                                            if (!*toAlloc)
+                                                fatal_error("failed to alloc buffer for pool 0x%x and function 0x%x", pool->addr, processedCallsInChunk[j]->addr);
                                             (*toAlloc)->label = processedCallsInChunk[j];
                                             (*toAlloc)->next = NULL;
                                             toAlloc = &(*toAlloc)->next;
