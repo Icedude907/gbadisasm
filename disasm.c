@@ -297,6 +297,8 @@ static void jump_table_state_machine(const struct cs_insn *insn, uint32_t addr)
 // handle mov lr, pc; bx rX
 static bool is_gs_func_call(const cs_insn *insn, uint32_t addr, int type) // should be called only when there's at least one function following
 {
+    if (insn[1].id != ARM_INS_BX)
+        return false;
     if (insn[0].id == ARM_INS_MOV
         && insn[0].detail->arm.cc == ARM_CC_AL
         && insn[0].detail->arm.op_count == 2
@@ -304,8 +306,7 @@ static bool is_gs_func_call(const cs_insn *insn, uint32_t addr, int type) // sho
         && insn[0].detail->arm.operands[0].reg == ARM_REG_LR
         && insn[0].detail->arm.operands[1].type == ARM_OP_REG
         && insn[0].detail->arm.operands[1].reg == ARM_REG_PC
-        && insn[0].detail->arm.operands[1].shift.type == ARM_SFT_INVALID
-        && insn[1].id == ARM_INS_BX) // Let's be strict for now. 
+        && insn[0].detail->arm.operands[1].shift.type == ARM_SFT_INVALID)
         return true;
     if (insn[0].id == ARM_INS_ADD
         && insn[0].detail->arm.cc == ARM_CC_AL
