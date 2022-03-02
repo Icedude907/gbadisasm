@@ -166,9 +166,7 @@ static void read_config(const char *fname)
                 if (strlen(tokens[2]) != 0)
                     name = dup_string(tokens[2]);
                 int label = disasm_add_label(addr, LABEL_THUMB_CODE, name);
-                if(!gLabels)
-                	fatal_error("%s: failed to add label on line %i, gLabels is NULL\n", fname, lineNum); // shouldn't happen
-                gLabels[label].branchType = BRANCH_TYPE_B;
+                disasm_set_branch_type(label, BRANCH_TYPE_B);
             }
             else
             {
@@ -184,9 +182,7 @@ static void read_config(const char *fname)
                 if (strlen(tokens[2]) != 0)
                     name = dup_string(tokens[2]);
                 int label = disasm_add_label(addr, LABEL_ARM_CODE, name);
-                if(!gLabels)
-                	fatal_error("%s: failed to add label on line %i, gLabels is NULL\n", fname, lineNum); // shouldn't happen
-                gLabels[label].branchType = BRANCH_TYPE_B;
+                disasm_set_branch_type(label, BRANCH_TYPE_B);
             }
             else
             {

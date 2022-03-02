@@ -13,6 +13,17 @@ extern void fatal_error(const char *fmt, ...);
 uint32_t ROM_LOAD_ADDR;
 #define UNKNOWN_SIZE (uint32_t)-1
 
+struct Label
+{
+    uint32_t addr;
+    uint8_t type;
+    uint8_t branchType;
+    uint32_t size;
+    bool processed;
+    bool isFunc; // 100% sure it's a function, which cannot be changed to BRANCH_TYPE_B. 
+    char *name;
+};
+
 struct Label *gLabels = NULL;
 int gLabelsCount = 0;
 static int sLabelBufferCount = 0;
@@ -58,6 +69,13 @@ int disasm_add_label(uint32_t addr, uint8_t type, char *name)
     gLabels[i].name = name;
     gLabels[i].isFunc = false;
     return i;
+}
+
+void disasm_set_branch_type(uint32_t label, uint32_t type)
+{
+    if (!gLabels)
+            fatal_error("gLabels is NULL, failed to set label type.");
+    gLabels[label].branchType = type;
 }
 
 // Utility Functions
