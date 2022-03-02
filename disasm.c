@@ -32,6 +32,8 @@ static csh sCapstone;
 const bool gOptionShowAddrComments = false;
 const int gOptionDataColumnWidth = 16;
 
+static struct Label *lookup_label(uint32_t addr);
+
 int disasm_add_label(uint32_t addr, uint8_t type, char *name)
 {
     int i;
@@ -71,11 +73,12 @@ int disasm_add_label(uint32_t addr, uint8_t type, char *name)
     return i;
 }
 
-void disasm_set_branch_type(uint32_t label, uint32_t type)
+int disasm_set_branch_type(uint32_t addr, uint32_t type)
 {
-    if (!gLabels)
-            fatal_error("gLabels is NULL, failed to set label type.");
-    gLabels[label].branchType = type;
+    struct Label *label = lookup_label(addr);
+    if(!label) return 1;
+    label->branchType = type;
+    return 0;
 }
 
 // Utility Functions

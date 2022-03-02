@@ -21,5 +21,5 @@ extern uint32_t ROM_LOAD_ADDR;
 
 // disasm.c
 int disasm_add_label(uint32_t addr, uint8_t type, char *name);
-void disasm_set_branch_type(uint32_t label, uint32_t type);
+int disasm_set_branch_type(uint32_t addr, uint32_t type);
 void disasm_disassemble(void);

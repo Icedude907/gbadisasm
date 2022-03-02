@@ -165,8 +165,8 @@ static void read_config(const char *fname)
             {
                 if (strlen(tokens[2]) != 0)
                     name = dup_string(tokens[2]);
-                int label = disasm_add_label(addr, LABEL_THUMB_CODE, name);
-                disasm_set_branch_type(label, BRANCH_TYPE_B);
+                disasm_add_label(addr, LABEL_THUMB_CODE, name);
+                disasm_set_branch_type(addr, BRANCH_TYPE_B);
             }
             else
             {
@@ -181,8 +181,8 @@ static void read_config(const char *fname)
             {
                 if (strlen(tokens[2]) != 0)
                     name = dup_string(tokens[2]);
-                int label = disasm_add_label(addr, LABEL_ARM_CODE, name);
-                disasm_set_branch_type(label, BRANCH_TYPE_B);
+                disasm_add_label(addr, LABEL_ARM_CODE, name);
+                disasm_set_branch_type(addr, BRANCH_TYPE_B);
             }
             else
             {
