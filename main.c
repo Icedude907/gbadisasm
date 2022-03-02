@@ -157,6 +157,38 @@ static void read_config(const char *fname)
                 fatal_error("%s: syntax error on line %i\n", fname, lineNum);
             }
         }
+        else if (strcmp(tokens[0], "thumb_label") == 0)
+        {
+            int addr;
+
+            if (sscanf(tokens[1], "%i", &addr) == 1)
+            {
+                if (strlen(tokens[2]) != 0)
+                    name = dup_string(tokens[2]);
+                disasm_add_label(addr, LABEL_THUMB_CODE, name);
+                disasm_set_branch_type(addr, BRANCH_TYPE_B);
+            }
+            else
+            {
+                fatal_error("%s: syntax error on line %i\n", fname, lineNum);
+            }
+        }
+        else if (strcmp(tokens[0], "arm_label") == 0)
+        {
+            int addr;
+
+            if (sscanf(tokens[1], "%i", &addr) == 1)
+            {
+                if (strlen(tokens[2]) != 0)
+                    name = dup_string(tokens[2]);
+                disasm_add_label(addr, LABEL_ARM_CODE, name);
+                disasm_set_branch_type(addr, BRANCH_TYPE_B);
+            }
+            else
+            {
+                fatal_error("%s: syntax error on line %i\n", fname, lineNum);
+            }
+        }
         else
         {
             fprintf(stderr, "%s: warning: unrecognized command '%s' on line %i\n", fname, tokens[0], lineNum);

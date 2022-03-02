@@ -13,13 +13,6 @@ extern void fatal_error(const char *fmt, ...);
 uint32_t ROM_LOAD_ADDR;
 #define UNKNOWN_SIZE (uint32_t)-1
 
-enum BranchType
-{
-    BRANCH_TYPE_UNKNOWN,
-    BRANCH_TYPE_B,
-    BRANCH_TYPE_BL,
-};
-
 struct Label
 {
     uint32_t addr;
@@ -38,6 +31,8 @@ static csh sCapstone;
 
 const bool gOptionShowAddrComments = false;
 const int gOptionDataColumnWidth = 16;
+
+static struct Label *lookup_label(uint32_t addr);
 
 int disasm_add_label(uint32_t addr, uint8_t type, char *name)
 {
@@ -76,6 +71,14 @@ int disasm_add_label(uint32_t addr, uint8_t type, char *name)
     gLabels[i].name = name;
     gLabels[i].isFunc = false;
     return i;
+}
+
+int disasm_set_branch_type(uint32_t addr, uint32_t type)
+{
+    struct Label *label = lookup_label(addr);
+    if(!label) return 1;
+    label->branchType = type;
+    return 0;
 }
 
 // Utility Functions
