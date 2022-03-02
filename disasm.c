@@ -28,7 +28,7 @@ struct Label
     bool processed;
     bool isFunc; // 100% sure it's a function, which cannot be changed to BRANCH_TYPE_B. 
     char *name;
-    struct DepNode deps;
+    struct DepNode *deps;
     bool inactive;
     bool isFarJump;
 };
@@ -79,8 +79,7 @@ int disasm_add_label(uint32_t addr, uint8_t type, char *name)
     gLabels[i].processed = false;
     gLabels[i].name = name;
     gLabels[i].isFunc = false;
-    gLabels[i].deps.label = NULL;
-    gLabels[i].deps.next = NULL;
+    gLabels[i].deps = NULL;
     gLabels[i].inactive = false;
     gLabels[i].isFarJump = false;
     return i;
@@ -314,7 +313,7 @@ static bool scan_func_in_deps(struct Label *pool, struct Label *func)
 {
     struct DepNode **cur;
 
-    for (cur = &pool->deps.next; *cur; cur = &(*cur)->next)
+    for (cur = &pool->deps; *cur; cur = &(*cur)->next)
         if ((*cur)->label == func)
             return true;
     return false;
@@ -324,7 +323,7 @@ static void add_dep_to_label(struct Label *pool, struct Label *func)
 {
     struct DepNode **cur;
 
-    for (cur = &pool->deps.next; *cur; cur = &(*cur)->next)
+    for (cur = &pool->deps; *cur; cur = &(*cur)->next)
         if ((*cur)->label == func)
             return;
     *cur = malloc(sizeof(struct DepNode));
@@ -705,11 +704,11 @@ static void analyze(void)
                                 int idx = disasm_add_label(poolAddr, LABEL_POOL, NULL);
                                 struct Label *pool = &gLabels[idx];
                                 struct DepNode **cur;
-                                struct Label tmp = {0};
-                                struct DepNode **toAlloc = &tmp.deps.next;
+                                struct DepNode *tmp = NULL;
+                                struct DepNode **toAlloc = &tmp;
 
                                 // only put commmon labels in deps
-                                for (cur = &pool->deps.next; *cur; cur = &(*cur)->next)
+                                for (cur = &pool->deps; *cur; cur = &(*cur)->next)
                                 {
                                     for (j = 0; j < pcici; ++j)
                                     {
@@ -726,8 +725,8 @@ static void analyze(void)
                                     }
                                 }
 
-                                if (pool->deps.next) rec_free_dep_nodes(pool->deps.next);
-                                pool->deps.next = tmp.deps.next;
+                                rec_free_dep_nodes(pool->deps);
+                                pool->deps = tmp;
                             }
                             if (poolAddr < labelAddr && poolAddr > addr - insn[i].size)
                                 labelAddr = poolAddr;
@@ -973,7 +972,7 @@ static void print_disassembly(void)
         if (gLabels[i].inactive)
         {
             // fprintf(stderr, "removing label: 0x%x\n", gLabels[i].addr);
-            rec_free_dep_nodes(gLabels[i].deps.next);
+            rec_free_dep_nodes(gLabels[i].deps);
             if (i+1 < gLabelsCount)
             {
                 memmove(&gLabels[i], &gLabels[i+1], sizeof(struct Label) * (gLabelsCount - i - 1));
