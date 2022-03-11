@@ -85,11 +85,12 @@ int disasm_add_label(uint32_t addr, uint8_t type, char *name)
     return i;
 }
 
-int disasm_set_branch_type(uint32_t addr, uint32_t type)
+int disasm_set_branch_type(uint32_t addr, uint32_t type, bool farJump)
 {
     struct Label *label = lookup_label(addr);
     if(!label) return 1;
     label->branchType = type;
+    label->isFarJump = farJump;
     return 0;
 }
 
