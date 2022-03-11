@@ -189,6 +189,22 @@ static void read_config(const char *fname)
                 fatal_error("%s: syntax error on line %i\n", fname, lineNum);
             }
         }
+        else if (strcmp(tokens[0], "jump_table") == 0)
+        {
+            int addr, count;
+
+            if (sscanf(tokens[1], "%i", &addr) == 1
+                && sscanf(tokens[2], "%i", &count) == 1)
+            {
+                disasm_add_label(addr, LABEL_JUMP_TABLE, NULL);
+                if (jump_table_create_labels(addr, count))
+                    fatal_error("%s: invalid params on line %i\n", fname, lineNum);
+            }
+            else
+            {
+                fatal_error("%s: syntax error on line %i\n", fname, lineNum);
+            }
+        }
         else
         {
             fprintf(stderr, "%s: warning: unrecognized command '%s' on line %i\n", fname, tokens[0], lineNum);
@@ -238,9 +254,9 @@ int main(int argc, char **argv)
 
     if (romFileName == NULL)
         fatal_error("no ROM file specified");
+    read_input_file(romFileName);
     if (configFileName != NULL)
         read_config(configFileName);
-    read_input_file(romFileName);
     disasm_disassemble();
     free(gInputFileBuffer);
     return 0;

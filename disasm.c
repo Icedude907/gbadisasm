@@ -268,24 +268,6 @@ static void jump_table_state_machine(const struct cs_insn *insn, uint32_t addr)
         uint32_t target;
         uint32_t firstTarget = -1u;
 
-        // jump table is not in ROM, indicating it's from a library loaded into RAM
-        if (!(jumpTableBegin & ROM_LOAD_ADDR))
-        {
-            uint32_t offset = poolAddr + 4 - jumpTableBegin;
-
-            disasm_add_label(poolAddr + 4, LABEL_JUMP_TABLE, NULL);
-            addr = poolAddr + 4; // start of jump table
-            while (addr < word_at(poolAddr + 4) + offset)
-            {
-                int label;
-
-                label = disasm_add_label(word_at(addr) + offset, LABEL_THUMB_CODE, NULL);
-                gLabels[label].branchType = BRANCH_TYPE_B;
-                addr += 4;
-            }
-            return;
-        }
-
         disasm_add_label(jumpTableBegin, LABEL_JUMP_TABLE, NULL);
         sJumpTableState = 0;
         // add code labels from jump table
@@ -307,6 +289,24 @@ static void jump_table_state_machine(const struct cs_insn *insn, uint32_t addr)
         return;
     }
     sJumpTableState++;
+}
+
+// when the size of a jump table is provided
+int jump_table_create_labels(uint32_t start, int count)
+{
+    uint32_t end, addr, target;
+
+    if (count <= 0 || start & 3) return 1;
+    end = start + count * 4;
+    for (addr = start; addr < end; addr += 4)
+    {
+        target = word_at(addr);
+        if (target - ROM_LOAD_ADDR >= 0x02000000
+            || target < end)
+            return 1;
+        gLabels[disasm_add_label(target, LABEL_THUMB_CODE, NULL)].branchType = BRANCH_TYPE_B;
+    }
+    return 0;
 }
 
 static bool scan_func_in_deps(struct Label *pool, struct Label *func)
