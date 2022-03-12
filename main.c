@@ -166,7 +166,7 @@ static void read_config(const char *fname)
                 if (strlen(tokens[2]) != 0)
                     name = dup_string(tokens[2]);
                 disasm_add_label(addr, LABEL_THUMB_CODE, name);
-                disasm_set_branch_type(addr, BRANCH_TYPE_B);
+                disasm_set_branch_type(addr, BRANCH_TYPE_B, false);
             }
             else
             {
@@ -182,7 +182,55 @@ static void read_config(const char *fname)
                 if (strlen(tokens[2]) != 0)
                     name = dup_string(tokens[2]);
                 disasm_add_label(addr, LABEL_ARM_CODE, name);
-                disasm_set_branch_type(addr, BRANCH_TYPE_B);
+                disasm_set_branch_type(addr, BRANCH_TYPE_B, false);
+            }
+            else
+            {
+                fatal_error("%s: syntax error on line %i\n", fname, lineNum);
+            }
+        }
+        else if (strcmp(tokens[0], "thumb_far_jump") == 0)
+        {
+            int addr;
+
+            if (sscanf(tokens[1], "%i", &addr) == 1)
+            {
+                if (strlen(tokens[2]) != 0)
+                    name = dup_string(tokens[2]);
+                disasm_add_label(addr, LABEL_THUMB_CODE, name);
+                disasm_set_branch_type(addr, BRANCH_TYPE_B, true);
+            }
+            else
+            {
+                fatal_error("%s: syntax error on line %i\n", fname, lineNum);
+            }
+        }
+        else if (strcmp(tokens[0], "arm_far_jump") == 0)
+        {
+            int addr;
+
+            if (sscanf(tokens[1], "%i", &addr) == 1)
+            {
+                if (strlen(tokens[2]) != 0)
+                    name = dup_string(tokens[2]);
+                disasm_add_label(addr, LABEL_ARM_CODE, name);
+                disasm_set_branch_type(addr, BRANCH_TYPE_B, true);
+            }
+            else
+            {
+                fatal_error("%s: syntax error on line %i\n", fname, lineNum);
+            }
+        }
+        else if (strcmp(tokens[0], "jump_table") == 0)
+        {
+            int addr, count;
+
+            if (sscanf(tokens[1], "%i", &addr) == 1
+                && sscanf(tokens[2], "%i", &count) == 1)
+            {
+                disasm_add_label(addr, LABEL_JUMP_TABLE, NULL);
+                if (jump_table_create_labels(addr, count))
+                    fatal_error("%s: invalid params on line %i\n", fname, lineNum);
             }
             else
             {
@@ -238,9 +286,9 @@ int main(int argc, char **argv)
 
     if (romFileName == NULL)
         fatal_error("no ROM file specified");
+    read_input_file(romFileName);
     if (configFileName != NULL)
         read_config(configFileName);
-    read_input_file(romFileName);
     disasm_disassemble();
     free(gInputFileBuffer);
     return 0;

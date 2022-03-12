@@ -9,4 +9,4 @@ where `rom_file` is the GBA rom to disassemble, and `config_file` is an optional
 
 ## Config File
 
-The config file consists of a list of statements, one per line. Lines beginning with `#` are treated as comments. An config file `pokeruby.cfg` for Pokemon Ruby is provided as an example.
+The config file consists of a list of statements, one per line. Lines beginning with `#` are treated as comments. An config file `totkol.cfg` for Tactics Ogre: The Knight of Lodis (U) is provided as an example.

@@ -13,6 +13,12 @@ extern void fatal_error(const char *fmt, ...);
 uint32_t ROM_LOAD_ADDR;
 #define UNKNOWN_SIZE (uint32_t)-1
 
+struct DepNode
+{
+    struct Label *label;
+    struct DepNode *next;
+};
+
 struct Label
 {
     uint32_t addr;
@@ -22,6 +28,9 @@ struct Label
     bool processed;
     bool isFunc; // 100% sure it's a function, which cannot be changed to BRANCH_TYPE_B. 
     char *name;
+    struct DepNode *deps;
+    bool inactive;
+    bool isFarJump;
 };
 
 struct Label *gLabels = NULL;
@@ -70,14 +79,18 @@ int disasm_add_label(uint32_t addr, uint8_t type, char *name)
     gLabels[i].processed = false;
     gLabels[i].name = name;
     gLabels[i].isFunc = false;
+    gLabels[i].deps = NULL;
+    gLabels[i].inactive = false;
+    gLabels[i].isFarJump = false;
     return i;
 }
 
-int disasm_set_branch_type(uint32_t addr, uint32_t type)
+int disasm_set_branch_type(uint32_t addr, uint32_t type, bool farJump)
 {
     struct Label *label = lookup_label(addr);
     if(!label) return 1;
     label->branchType = type;
+    label->isFarJump = farJump;
     return 0;
 }
 
@@ -89,7 +102,7 @@ static struct Label *lookup_label(uint32_t addr)
 
     for (i = 0; i < gLabelsCount; i++)
     {
-        if (gLabels[i].addr == addr)
+        if (gLabels[i].addr == addr && !gLabels[i].inactive)
             return &gLabels[i];
     }
     return NULL;
@@ -120,7 +133,7 @@ static int get_unprocessed_label_index(void)
 
     for (i = 0; i < gLabelsCount; i++)
     {
-        if (!gLabels[i].processed)
+        if (!gLabels[i].processed && !gLabels[i].inactive)
             return i;
     }
     return -1;
@@ -256,24 +269,6 @@ static void jump_table_state_machine(const struct cs_insn *insn, uint32_t addr)
         uint32_t target;
         uint32_t firstTarget = -1u;
 
-        // jump table is not in ROM, indicating it's from a library loaded into RAM
-        if (!(jumpTableBegin & ROM_LOAD_ADDR))
-        {
-            uint32_t offset = poolAddr + 4 - jumpTableBegin;
-
-            disasm_add_label(poolAddr + 4, LABEL_JUMP_TABLE, NULL);
-            addr = poolAddr + 4; // start of jump table
-            while (addr < word_at(poolAddr + 4) + offset)
-            {
-                int label;
-
-                label = disasm_add_label(word_at(addr) + offset, LABEL_THUMB_CODE, NULL);
-                gLabels[label].branchType = BRANCH_TYPE_B;
-                addr += 4;
-            }
-            return;
-        }
-
         disasm_add_label(jumpTableBegin, LABEL_JUMP_TABLE, NULL);
         sJumpTableState = 0;
         // add code labels from jump table
@@ -295,6 +290,97 @@ static void jump_table_state_machine(const struct cs_insn *insn, uint32_t addr)
         return;
     }
     sJumpTableState++;
+}
+
+// when the size of a jump table is provided
+int jump_table_create_labels(uint32_t start, int count)
+{
+    uint32_t end, addr, target;
+
+    if (count <= 0 || start & 3) return 1;
+    end = start + count * 4;
+    for (addr = start; addr < end; addr += 4)
+    {
+        target = word_at(addr);
+        if (target - ROM_LOAD_ADDR >= 0x02000000
+            || target < end)
+            return 1;
+        gLabels[disasm_add_label(target, LABEL_THUMB_CODE, NULL)].branchType = BRANCH_TYPE_B;
+    }
+    return 0;
+}
+
+static bool scan_func_in_deps(struct Label *pool, struct Label *func)
+{
+    struct DepNode **cur;
+
+    for (cur = &pool->deps; *cur; cur = &(*cur)->next)
+        if ((*cur)->label == func)
+            return true;
+    return false;
+}
+
+static void add_dep_to_label(struct Label *pool, struct Label *func)
+{
+    struct DepNode **cur;
+
+    for (cur = &pool->deps; *cur; cur = &(*cur)->next)
+        if ((*cur)->label == func)
+            return;
+    *cur = malloc(sizeof(struct DepNode));
+    if (!*cur)
+        fatal_error("failed to alloc buffer for pool 0x%x and function 0x%x", pool->addr, func->addr);
+    (*cur)->label = func;
+    (*cur)->next = NULL;
+}
+
+static void rec_free_dep_nodes(struct DepNode *dn)
+{
+    if (!dn) return;
+    rec_free_dep_nodes(dn->next);
+    free(dn);
+}
+
+static void remove_label(struct Label *label)
+{
+    label->inactive = true;
+}
+
+static struct Label *find_prev_label(struct Label *label)
+{
+    struct Label *ret = NULL;
+    int i;
+
+    for (i = 0; i < gLabelsCount; ++i)
+    {
+        if (gLabels[i].type == LABEL_THUMB_CODE || gLabels[i].type == LABEL_ARM_CODE)
+        {
+            if (gLabels[i].addr < label->addr && !gLabels[i].inactive)
+            {
+                if (!ret
+                    || gLabels[i].addr > ret->addr)
+                    ret = &gLabels[i];
+            }
+        }
+    }
+    return ret;
+}
+
+static void remove_labels_for_fake_func_dep(struct Label *fake)
+{
+    int i;
+
+    for (i = 0; i < gLabelsCount; ++i)
+    {
+        if (scan_func_in_deps(&gLabels[i], fake))
+        {
+            struct Label *label = find_prev_label(&gLabels[i]);
+
+            if (label)
+                label->processed = false;
+            remove_label(&gLabels[i]);
+        }
+    }
 }
 
 // handle mov lr, pc; bx rX
@@ -372,7 +458,8 @@ static uint32_t next_label_addr(uint32_t addr)
             continue;
 
         if (gLabels[i].addr >= addr
-         && gLabels[i].addr < labelAddr)
+         && gLabels[i].addr < labelAddr
+         && !gLabels[i].inactive)
             labelAddr = gLabels[i].addr;
     }
     return labelAddr == 0xFFFFFFFF ? 0 : labelAddr;
@@ -422,6 +509,9 @@ static void analyze(void)
                  * up later analysis. 
                  */
                 uint32_t labelAddr = next_label_addr(addr);
+                #define MAX_CALL 1000
+                struct Label *processedCallsInChunk[MAX_CALL] = {0}; // TODO: reimplement this
+                int pcici = 0;
 
                 if (labelAddr <= addr && labelAddr != 0)
                     break;
@@ -504,9 +594,20 @@ static void analyze(void)
                                 {
                                     const struct Label *next;
 
-                                    lbl = disasm_add_label(target, type, NULL);
                                     if (gLabels[lbl].branchType != BRANCH_TYPE_B)
+                                    {
+                                        int j;
+
                                         gLabels[lbl].branchType = BRANCH_TYPE_BL;
+                                        for (j = 0; j < pcici; ++j)
+                                            if (processedCallsInChunk[j] == &gLabels[lbl])
+                                                break;
+                                        if (j == pcici && pcici < MAX_CALL)
+                                            processedCallsInChunk[pcici++] = &gLabels[lbl];
+                                    }
+                                    else if (insn[i].detail->arm.cc == ARM_CC_AL
+                                        && gLabels[lbl].isFarJump)
+                                        break;
                                     // if the address right after is a pool, then we know
                                     // for sure that this is a far jump and not a function call
                                     if (((next = lookup_label(addr)) != NULL && next->type == LABEL_POOL)
@@ -514,10 +615,11 @@ static void analyze(void)
                                     // Note that we need to make sure it's not 4-byte aligned since we can now be in ARM mode
                                      || ((addr & 2) && hword_at(addr) == 0))
                                     {
+                                        gLabels[lbl].isFarJump = true;
                                         gLabels[lbl].branchType = BRANCH_TYPE_B;
+                                        remove_labels_for_fake_func_dep(&gLabels[lbl]);
                                         break;
                                     }
-                                    // if you want to force set a label to BRANCH_TYPE_B, hardcode it here. 
                                 }
                                 else
                                 {
@@ -587,10 +689,45 @@ static void analyze(void)
 
                         if (is_pool_load(&insn[i]))
                         {
+                            int j;
+
                             poolAddr = get_pool_load(&insn[i], addr - insn[i].size, type);
                             assert(poolAddr != 0);
                             assert((poolAddr & 3) == 0);
-                            disasm_add_label(poolAddr, LABEL_POOL, NULL);
+                            for (j = 0; j < gLabelsCount; ++j)
+                            {
+                                if (gLabels[j].addr == poolAddr && gLabels[j].inactive)
+                                    break; // don't add the label if it has been proved as a mistake
+                            }
+                            if (j == gLabelsCount)
+                            {
+                                int idx = disasm_add_label(poolAddr, LABEL_POOL, NULL);
+                                struct Label *pool = &gLabels[idx];
+                                struct DepNode **cur;
+                                struct DepNode *tmp = NULL;
+                                struct DepNode **toAlloc = &tmp;
+
+                                // only put commmon labels in deps
+                                for (cur = &pool->deps; *cur; cur = &(*cur)->next)
+                                {
+                                    for (j = 0; j < pcici; ++j)
+                                    {
+                                        if (processedCallsInChunk[j] == (*cur)->label)
+                                        {
+                                            assert(!*toAlloc);
+                                            *toAlloc = malloc(sizeof(struct DepNode));
+                                            if (!*toAlloc)
+                                                fatal_error("failed to alloc buffer for pool 0x%x and function 0x%x", pool->addr, processedCallsInChunk[j]->addr);
+                                            (*toAlloc)->label = processedCallsInChunk[j];
+                                            (*toAlloc)->next = NULL;
+                                            toAlloc = &(*toAlloc)->next;
+                                        }
+                                    }
+                                }
+
+                                rec_free_dep_nodes(pool->deps);
+                                pool->deps = tmp;
+                            }
                             if (poolAddr < labelAddr && poolAddr > addr - insn[i].size)
                                 labelAddr = poolAddr;
                             word = word_at(poolAddr);
@@ -827,6 +964,23 @@ static void print_disassembly(void)
         if ((gLabels[i - 1].type == LABEL_ARM_CODE && gLabels[i].type == LABEL_THUMB_CODE)
          || (gLabels[i - 1].type == LABEL_THUMB_CODE && gLabels[i].type == LABEL_ARM_CODE))
             gLabels[i].branchType = BRANCH_TYPE_BL;
+
+    // remove inactive labels
+
+    for (i = 0; i < gLabelsCount; i++)
+    {
+        if (gLabels[i].inactive)
+        {
+            // fprintf(stderr, "removing label: 0x%x\n", gLabels[i].addr);
+            rec_free_dep_nodes(gLabels[i].deps);
+            if (i+1 < gLabelsCount)
+            {
+                memmove(&gLabels[i], &gLabels[i+1], sizeof(struct Label) * (gLabelsCount - i - 1));
+                --i; // don't increment i
+            }
+            --gLabelsCount;
+        }
+    }
 
     i = 0;
     while (addr < ROM_LOAD_ADDR + gInputFileBufferSize)
