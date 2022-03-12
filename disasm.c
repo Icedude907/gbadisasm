@@ -620,7 +620,6 @@ static void analyze(void)
                                         remove_labels_for_fake_func_dep(&gLabels[lbl]);
                                         break;
                                     }
-                                    // if you want to force set a label to BRANCH_TYPE_B, hardcode it here. 
                                 }
                                 else
                                 {
