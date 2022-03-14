@@ -7,11 +7,10 @@ DEBUG ?= 0
 CC := gcc
 CFLAGS := -isystem $(CAPSTONE_DIR)/include -Wall -Wextra -Wpedantic
 ifeq ($(DEBUG),1)
-CFLAGS += -O0 -g
+CFLAGS += -O0 -g -fsanitize=address
 else
 CFLAGS += -O3
 endif
-#CFLAGS += -fsanitize=address
 PROGRAM := gbadisasm
 SOURCES := main.c disasm.c
 LIBS := $(CAPSTONE_LIB)
