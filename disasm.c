@@ -256,7 +256,9 @@ static void jump_table_state_machine(const struct cs_insn *insn, uint32_t addr)
         // "mov pc, rX"
         if (insn->id == ARM_INS_MOV
          && insn->detail->arm.operands[0].type == ARM_OP_REG
-         && insn->detail->arm.operands[0].reg == ARM_REG_PC)
+         && insn->detail->arm.operands[0].reg == ARM_REG_PC
+         && insn->detail->arm.operands[1].type == ARM_OP_REG
+         && insn->detail->arm.operands[1].reg != ARM_REG_LR)
             goto match;
         break;
     }
