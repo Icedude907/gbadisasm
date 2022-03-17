@@ -224,6 +224,7 @@ static void jump_table_state_machine(const struct cs_insn *insn, uint32_t addr)
     // sometimes another instruction (like a mov) can interrupt
     static bool gracePeriod;
     static uint32_t poolAddr;
+    static arm_reg targetReg;
 
     switch (sJumpTableState)
     {
@@ -249,8 +250,12 @@ static void jump_table_state_machine(const struct cs_insn *insn, uint32_t addr)
         break;
       case 3:
         // "ldr rX, [rX]"
-        if (insn->id == ARM_INS_LDR)
+        if (insn->id == ARM_INS_LDR
+            && insn->detail->arm.operands[0].type == ARM_OP_REG)
+        {
+            targetReg = insn->detail->arm.operands[0].reg;
             goto match;
+        }
         break;
       case 4:
         // "mov pc, rX"
@@ -258,7 +263,8 @@ static void jump_table_state_machine(const struct cs_insn *insn, uint32_t addr)
          && insn->detail->arm.operands[0].type == ARM_OP_REG
          && insn->detail->arm.operands[0].reg == ARM_REG_PC
          && insn->detail->arm.operands[1].type == ARM_OP_REG
-         && insn->detail->arm.operands[1].reg != ARM_REG_LR)
+         && insn->detail->arm.operands[1].reg == targetReg
+         && insn->detail->arm.operands[1].shift.type == ARM_SFT_INVALID)
             goto match;
         break;
     }
