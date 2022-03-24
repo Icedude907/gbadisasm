@@ -605,6 +605,17 @@ static void analyze(void)
                         uint32_t target;
                         //uint32_t currAddr = addr;
 
+                        // handle bx pc
+                        if (insn[i].id == ARM_INS_BX
+                            && insn[i].detail->arm.op_count == 1
+                            && insn[i].detail->arm.operands[0].type == ARM_OP_REG
+                            && insn[i].detail->arm.operands[0].reg == ARM_REG_PC)
+                        {
+                            renew_or_add_new_func_label(LABEL_ARM_CODE, 4 + (addr&~3));
+                            addr += insn[i].size;
+                            break;
+                        }
+
                         addr += insn[i].size;
 
                         // For BX{COND}, only BXAL can be considered as end of function
@@ -1105,7 +1116,6 @@ static void print_disassembly(void)
                     else
                         printf("_%08X:\n", addr);
                 }
-
                 assert(gLabels[i].size != UNKNOWN_SIZE);
                 cs_option(sCapstone, CS_OPT_MODE, mode);
                 count = cs_disasm(sCapstone, gInputFileBuffer + addr - ROM_LOAD_ADDR, gLabels[i].size, addr, 0, &insn);
