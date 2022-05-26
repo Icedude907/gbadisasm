@@ -45,6 +45,7 @@ const bool gOptionShowAddrComments = false;
 const int gOptionDataColumnWidth = 16;
 
 static struct Label *lookup_label(uint32_t addr);
+static void renew_or_add_new_func_label(int type, uint32_t word);
 
 int disasm_add_label(uint32_t addr, uint8_t type, char *name)
 {
@@ -446,7 +447,12 @@ static bool is_gs_func_call(const cs_insn *insn, uint32_t addr, int type) // sho
         && insn[0].detail->arm.operands[1].type == ARM_OP_REG
         && insn[0].detail->arm.operands[1].reg == ARM_REG_PC
         && insn[0].detail->arm.operands[1].shift.type == ARM_SFT_INVALID)
+    {
+        if (type == LABEL_THUMB_CODE)
+            // TODO: this is unsafe. Possibly a thumb subroutine will return with something like mov pc, lr
+            renew_or_add_new_func_label(LABEL_ARM_CODE, (addr + 2) & ~2); // the bx insn can be used for both thumb and arm
         return true;
+    }
     if (insn[0].id == ARM_INS_ADD
         && insn[0].detail->arm.cc == ARM_CC_AL
         && insn[0].detail->arm.op_count == 3
@@ -456,6 +462,7 @@ static bool is_gs_func_call(const cs_insn *insn, uint32_t addr, int type) // sho
         && insn[0].detail->arm.operands[1].reg == ARM_REG_PC
         && insn[0].detail->arm.operands[2].type == ARM_OP_IMM)
     {
+        // only ARM insns can reach here
         if (insn[0].detail->arm.operands[2].imm == 0)
             return true;
         if (!lookup_label(addr + insn[0].detail->arm.operands[2].imm))
