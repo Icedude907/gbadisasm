@@ -16,6 +16,7 @@ struct ConfigLabel
 
 uint8_t *gInputFileBuffer;
 size_t gInputFileBufferSize;
+bool gStandaloneFlag;
 
 void fatal_error(const char *fmt, ...)
 {
@@ -277,6 +278,10 @@ int main(int argc, char **argv)
             ROM_LOAD_ADDR = strtoul(argv[i], &end, 0);
             if (*end != 0)
                 fatal_error("invalid integer value for option -l");
+        }
+        else if (strcmp(argv[i], "-s") == 0)
+        {
+            gStandaloneFlag = true;
         }
         else
         {

@@ -292,7 +292,7 @@ static void jump_table_state_machine(const struct cs_insn *insn, uint32_t addr)
             int label;
 
             target = word_at(addr);
-            if (target - ROM_LOAD_ADDR >= 0x02000000)
+            if (target - ROM_LOAD_ADDR >= gInputFileBufferSize)
                 break;
             if (target < firstTarget && target > jumpTableBegin)
                 firstTarget = target;
@@ -316,7 +316,7 @@ int jump_table_create_labels(uint32_t start, int count)
     for (addr = start; addr < end; addr += 4)
     {
         target = word_at(addr);
-        if (target - ROM_LOAD_ADDR >= 0x02000000
+        if (target - ROM_LOAD_ADDR >= gInputFileBufferSize
             || target < end)
             return 1;
         gLabels[disasm_add_label(target, LABEL_THUMB_CODE, NULL)].branchType = BRANCH_TYPE_B;
@@ -473,7 +473,7 @@ static bool is_gs_func_call(const cs_insn *insn, uint32_t addr, int type) // sho
 
 static void renew_or_add_new_func_label(int type, uint32_t word)
 {
-    if (word & ROM_LOAD_ADDR)
+    if (word >= ROM_LOAD_ADDR && word - ROM_LOAD_ADDR < gInputFileBufferSize - 4)
     {
         struct Label *label_p = lookup_label(word & ~1);
 
@@ -896,7 +896,7 @@ static void print_insn(const cs_insn *insn, uint32_t addr, int mode)
 
             assert(label != NULL);  // We should have found this label in the analysis phase
             if (label->name != NULL)
-                printf("\t%s %s\n", insn->mnemonic, label-> name);
+                printf("\t%s %s\n", insn->mnemonic, label->name);
             else
                 printf("\t%s %s_%08X\n", insn->mnemonic, label->branchType == BRANCH_TYPE_BL ? "sub" : "", target);
         }
@@ -906,7 +906,7 @@ static void print_insn(const cs_insn *insn, uint32_t addr, int mode)
             uint32_t value = word_at(word);
             const struct Label *label_p;
 
-            if (value & 3 && value & ROM_LOAD_ADDR) // possibly thumb function
+            if (value & 3 && value > ROM_LOAD_ADDR && value - ROM_LOAD_ADDR - 1 < gInputFileBufferSize) // possibly thumb function
             {
                 if (label_p = lookup_label(value & ~1), label_p != NULL)
                 {
@@ -983,7 +983,7 @@ static void print_insn(const cs_insn *insn, uint32_t addr, int mode)
                 uint32_t word = insn->detail->arm.operands[2].imm + addr + 8;
                 const struct Label *label_p;
 
-                if (word & 3 && word & ROM_LOAD_ADDR) // possibly thumb function
+                if (word & 3 && word > ROM_LOAD_ADDR && word - ROM_LOAD_ADDR - 1 < gInputFileBufferSize) // possibly thumb function
                 {
                     if (label_p = lookup_label(word & ~1), label_p != NULL)
                     {
@@ -1175,7 +1175,7 @@ static void print_disassembly(void)
                 uint32_t value = word_at(addr);
                 const struct Label *label_p;
 
-                if (value & 3 && value & ROM_LOAD_ADDR) // possibly thumb function
+                if (value & 3 && value > ROM_LOAD_ADDR && value - ROM_LOAD_ADDR - 1 < gInputFileBufferSize) // possibly thumb function
                 {
                     if (label_p = lookup_label(value & ~1), label_p != NULL)
                     {
@@ -1219,7 +1219,7 @@ static void print_disassembly(void)
                 {
                     uint32_t word = word_at(addr);
                     
-                    if (word & ROM_LOAD_ADDR)
+                    if (word > ROM_LOAD_ADDR && word - ROM_LOAD_ADDR < gInputFileBufferSize)
                         printf("\t.4byte _%08X @ case %i\n", word, caseNum);
                     else
                         printf("\t.4byte 0x%08X @ case %i\n", word, caseNum);
@@ -1252,12 +1252,14 @@ void disasm_disassemble(void)
     }
     cs_option(sCapstone, CS_OPT_DETAIL, CS_OPT_ON);
 
-    // entry point
-    disasm_add_label(ROM_LOAD_ADDR, LABEL_ARM_CODE, NULL);
+    if (!gStandaloneFlag)
+    {
+        // entry point
+        disasm_add_label(ROM_LOAD_ADDR, LABEL_ARM_CODE, NULL);
 
-    // rom header
-    disasm_add_label(ROM_LOAD_ADDR + 4, LABEL_DATA, NULL);
-
+        // rom header
+        disasm_add_label(ROM_LOAD_ADDR + 4, LABEL_DATA, NULL);
+    }
     analyze();
     print_disassembly();
     free(gLabels);
