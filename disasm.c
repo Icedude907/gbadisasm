@@ -1260,6 +1260,9 @@ void disasm_disassemble(void)
         // rom header
         disasm_add_label(ROM_LOAD_ADDR + 4, LABEL_DATA, NULL);
     }
+
+    if (!gLabelsCount)
+        fatal_error("you need to at least provide one code label in the cfg to startwith. ");
     analyze();
     print_disassembly();
     free(gLabels);
