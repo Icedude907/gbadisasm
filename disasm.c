@@ -1058,12 +1058,9 @@ static void print_disassembly(void)
 
         if (gLabels[i].inactive)
         {
-            for (j = 0;
-                j < gLabels[i].depCount
-                    && gLabels[i].deps[j]
-                    && gLabels[i].deps[j] != &sInvalidDepNode;
-                ++j)
-                rec_free_dep_nodes(gLabels[i].deps[j]);
+            for (j = 0; j < gLabels[i].depCount && gLabels[i].deps[j]; ++j)
+                if (gLabels[i].deps[j] != &sInvalidDepNode)
+                    rec_free_dep_nodes(gLabels[i].deps[j]);
             if (i+1 < gLabelsCount)
             {
                 memmove(&gLabels[i], &gLabels[i+1], sizeof(struct Label) * (gLabelsCount - i - 1));
@@ -1248,6 +1245,19 @@ static void print_disassembly(void)
     }
 }
 
+static void free_labels(void)
+{
+    int i, j;
+
+    for (i = 0; i < gLabelsCount; ++i)
+    {
+        if (gLabels[i].name) free(gLabels[i].name);
+        for (j = 0; j < gLabels[i].depCount && gLabels[i].deps[j]; ++j)
+            if (gLabels[i].deps[j] != &sInvalidDepNode)
+                rec_free_dep_nodes(gLabels[i].deps[j]);
+    }
+}
+
 void disasm_disassemble(void)
 {
     // initialize capstone
@@ -1271,5 +1281,6 @@ void disasm_disassemble(void)
         fatal_error("you need to at least provide one code label in the cfg to startwith. ");
     analyze();
     print_disassembly();
+    free_labels();
     free(gLabels);
 }
