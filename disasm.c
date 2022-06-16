@@ -310,6 +310,7 @@ static void jump_table_state_machine(const struct cs_insn *insn, uint32_t addr)
 int jump_table_create_labels(uint32_t start, int count)
 {
     uint32_t end, addr, target;
+    int idx;
 
     if (count <= 0 || start & 3) return 1;
     end = start + count * 4;
@@ -319,7 +320,8 @@ int jump_table_create_labels(uint32_t start, int count)
         if (target - ROM_LOAD_ADDR >= gInputFileBufferSize
             || target < end)
             return 1;
-        gLabels[disasm_add_label(target, LABEL_THUMB_CODE, NULL)].branchType = BRANCH_TYPE_B;
+        idx = disasm_add_label(target, LABEL_THUMB_CODE, NULL);
+        gLabels[idx].branchType = BRANCH_TYPE_B;
     }
     return 0;
 }
@@ -466,7 +468,10 @@ static bool is_gs_func_call(const cs_insn *insn, uint32_t addr, int type) // sho
         if (insn[0].detail->arm.operands[2].imm == 0)
             return true;
         if (!lookup_label(addr + insn[0].detail->arm.operands[2].imm))
-            gLabels[disasm_add_label(addr + insn[0].detail->arm.operands[2].imm, type, NULL)].branchType = BRANCH_TYPE_B;
+        {
+            int idx = disasm_add_label(addr + insn[0].detail->arm.operands[2].imm, type, NULL);
+            gLabels[idx].branchType = BRANCH_TYPE_B;
+        }
     }
     return false;
 }
@@ -487,7 +492,8 @@ static void renew_or_add_new_func_label(int type, uint32_t word)
         else
         {
             // implicitly set to BRANCH_TYPE_BL
-            gLabels[disasm_add_label(word & ~1, type, NULL)].isFunc = true;
+            int idx = disasm_add_label(word & ~1, type, NULL);
+            gLabels[idx].isFunc = true;
         }
     }
 }
