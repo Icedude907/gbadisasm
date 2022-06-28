@@ -1083,6 +1083,13 @@ static void print_disassembly(void)
                 gLabels[i].size = gLabels[i + 1].addr - gLabels[i].addr;
         }
 
+        // may only happen when ROM_LOAD_ADDR is not labeled
+        if (addr < gLabels[i].addr)
+        {
+            print_gap(addr, gLabels[i].addr);
+            addr = gLabels[i].addr;
+        }
+
         switch (gLabels[i].type)
         {
         case LABEL_ARM_CODE:
