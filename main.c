@@ -222,6 +222,21 @@ static void read_config(const char *fname)
                 fatal_error("%s: syntax error on line %i\n", fname, lineNum);
             }
         }
+        else if (strcmp(tokens[0], "pool_label") == 0)
+        {
+            int addr, count, i;
+
+            if (sscanf(tokens[1], "%i", &addr) == 1
+                && sscanf(tokens[2], "%i", &count) == 1)
+            {
+                for (i = 0; i < count; ++i)
+                    disasm_add_label(addr + 4*i, LABEL_POOL, NULL);
+            }
+            else
+            {
+                fatal_error("%s: syntax error on line %i\n", fname, lineNum);
+            }
+        }
         else if (strcmp(tokens[0], "jump_table") == 0)
         {
             int addr, count;
