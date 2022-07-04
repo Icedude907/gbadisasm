@@ -542,7 +542,8 @@ static void analyze(void)
 
         if ((li = get_unprocessed_label_index()) == -1)
         {
-            if (!set_inactive_labels_and_reprocess_prev_labels()) // important -- only mark inactive when there's nothing to process. 
+            if (!set_inactive_labels_and_reprocess_prev_labels() // important -- only mark inactive when there's nothing to process. 
+                || (li = get_unprocessed_label_index()) == -1)
                 return;
         }
         addr = gLabels[li].addr;
