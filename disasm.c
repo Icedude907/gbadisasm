@@ -100,6 +100,11 @@ int disasm_set_branch_type(uint32_t addr, uint32_t type, bool farJump)
     return 0;
 }
 
+void disasm_force_func(int idx)
+{
+    gLabels[idx].isFunc = true;
+}
+
 // Utility Functions
 
 static struct Label *lookup_label(uint32_t addr)

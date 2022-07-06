@@ -92,6 +92,8 @@ static char *dup_string(const char *s)
     return new;
 }
 
+#define NUM_CMD_TOKENS 4
+
 static void read_config(const char *fname)
 {
     FILE *file = fopen(fname, "rb");
@@ -116,14 +118,14 @@ static void read_config(const char *fname)
 
     for (line = next = buffer; *line != '\0'; line = next, lineNum++)
     {
-        char *tokens[3];
+        char *tokens[NUM_CMD_TOKENS];
         char *name = NULL;
         int i;
 
         next = split_line(line);
 
         tokens[0] = line = skip_whitespace(line);
-        for (i = 1; i < 3; i++)
+        for (i = 1; i < NUM_CMD_TOKENS; i++)
             tokens[i] = line = split_word(line);
 
         if (tokens[0][0] == '#')
@@ -131,12 +133,15 @@ static void read_config(const char *fname)
         if (strcmp(tokens[0], "arm_func") == 0)
         {
             int addr;
+            int idx;
 
             if (sscanf(tokens[1], "%i", &addr) == 1)
             {
                 if (strlen(tokens[2]) != 0)
                     name = dup_string(tokens[2]);
-                disasm_add_label(addr, LABEL_ARM_CODE, name);
+                idx = disasm_add_label(addr, LABEL_ARM_CODE, name);
+                if (strlen(tokens[3]) != 0)
+                    disasm_force_func(idx);
             }
             else
             {
@@ -146,12 +151,15 @@ static void read_config(const char *fname)
         else if (strcmp(tokens[0], "thumb_func") == 0)
         {
             int addr;
+            int idx;
 
             if (sscanf(tokens[1], "%i", &addr) == 1)
             {
                 if (strlen(tokens[2]) != 0)
                     name = dup_string(tokens[2]);
-                disasm_add_label(addr, LABEL_THUMB_CODE, name);
+                idx = disasm_add_label(addr, LABEL_THUMB_CODE, name);
+                if (strlen(tokens[3]) != 0)
+                    disasm_force_func(idx);
             }
             else
             {
