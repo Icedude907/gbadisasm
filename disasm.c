@@ -726,6 +726,39 @@ static void analyze(void)
 
                         addr += insn[i].size;
 
+                        // handle Bionicle: Matoran Adventures
+                        if (insn[i].id == ARM_INS_LDR
+                            && insn[i].detail->arm.cc == ARM_CC_LS
+                            && insn[i].detail->arm.operands[0].type == ARM_OP_REG
+                            && insn[i].detail->arm.operands[0].reg == ARM_REG_PC
+                            && insn[i].detail->arm.operands[1].type == ARM_OP_MEM
+                            && insn[i].detail->arm.operands[1].mem.base == ARM_REG_PC
+                            && insn[i].detail->arm.operands[1].mem.scale == 1
+                            && insn[i].detail->arm.operands[1].shift.type == ARM_SFT_LSL
+                            && insn[i].detail->arm.operands[1].shift.value == 2
+                            && i
+                            && insn[i-1].id == ARM_INS_CMP
+                            && insn[i-1].detail->arm.cc == ARM_CC_AL
+                            && insn[i-1].detail->arm.operands[0].type == ARM_OP_REG
+                            && insn[i-1].detail->arm.operands[0].reg == insn[i].detail->arm.operands[1].mem.index
+                            && insn[i-1].detail->arm.operands[1].type == ARM_OP_IMM)
+                        {
+                            uint32_t jumpTableAddr = addr + 4, target;
+                            int j, idx;
+
+                            for (j = 0; j < insn[i-1].detail->arm.operands[1].imm + 1; ++j)
+                            {
+                                disasm_add_label(jumpTableAddr + j*4, LABEL_POOL, NULL);
+                                target = word_at(jumpTableAddr + j*4);
+                                if (!lookup_label(target))
+                                {
+                                    idx = disasm_add_label(target, LABEL_ARM_CODE, NULL);
+                                    gLabels[idx].isFarJump = true;
+                                    gLabels[idx].branchType = BRANCH_TYPE_B;
+                                }
+                            }
+                        }
+
                         if (is_func_return(&insn[i]))
                         {
                             struct Label *label_p;
