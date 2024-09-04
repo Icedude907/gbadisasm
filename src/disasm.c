@@ -1,13 +1,9 @@
 #include "gbadisasm.h"
 
 #include <assert.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include <capstone/capstone.h>
-
-
-extern void fatal_error(const char* fmt, ...);
 
 uint32_t ROM_LOAD_ADDR;
 #define UNKNOWN_SIZE (uint32_t) - 1
