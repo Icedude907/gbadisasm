@@ -213,8 +213,11 @@ static void read_config(const char* fname) {
         } else if(strcmp(tokens[0], "data_label") == 0) {
             int addr;
 
+            if(strlen(tokens[2]) != 0)
+                name = dup_string(tokens[2]);
+
             if(sscanf(tokens[1], "%i", &addr) == 1) {
-                disasm_add_label(addr, LABEL_DATA, NULL);
+                disasm_add_label(addr, LABEL_DATA, name);
             } else {
                 fatal_error("%s: syntax error on line %i\n", fname, lineNum);
             }

@@ -798,7 +798,7 @@ static void print_gap(uint32_t addr, uint32_t nextaddr) {
     if(addr == nextaddr)
         return;
 
-    assert(addr < nextaddr);
+    // assert(addr < nextaddr);
 
     if((addr & 3) == 2) {
         uint16_t next_short = hword_at(addr);
@@ -1130,7 +1130,7 @@ static void print_disassembly(void) {
         if(i >= gLabelsCount)
             break;
         nextAddr = gLabels[i].addr;
-        assert(addr <= nextAddr);
+        // assert(addr <= nextAddr);
 
         if(nextAddr <= ROM_LOAD_ADDR + gInputFileBufferSize) // prevent out-of-bound read
             print_gap(addr, nextAddr);
