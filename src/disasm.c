@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <capstone.h>
+#include <capstone/capstone.h>
 
 #include "gbadisasm.h"
 

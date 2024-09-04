@@ -1,6 +1,7 @@
 # GBADISASM
-
 This is a simple disassembler for Game Boy Advance games.
+
+Modified by Icedude_907. Forked from [jiangzhengwenjz's project](https://github.com/jiangzhengwenjz/gbadisasm).
 
 ## Usage
 
