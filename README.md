@@ -2,6 +2,7 @@
 This is a simple disassembler for Game Boy Advance games.
 
 Modified by Icedude_907. Forked from [jiangzhengwenjz's project](https://github.com/jiangzhengwenjz/gbadisasm).
+You need to fetch a copy of capstone disassembler and include it in the source folder. Then configure `CMakeLists.txt` to point to the folder name (e.g.: `capstone-5.0.3`).
 
 ## Usage
 
@@ -13,7 +14,7 @@ Modified by Icedude_907. Forked from [jiangzhengwenjz's project](https://github.
 
 ## Config File
 
-The config file consists of a list of statements, one per line. Lines beginning with `#` are treated as comments. An config file `alttpafs.cfg` for The Legend of Zelda: A Link to the Past and Four Swords (U) is provided as an example.
+The config file consists of a list of statements, one per line. Lines beginning with `#` are treated as comments. Some config files, including `alttpafs.cfg` for The Legend of Zelda: A Link to the Past and Four Swords (U) are provided as an example.
 
 ### Config File Statement Format
 
@@ -30,4 +31,4 @@ Note: `<>` means optional. `[]` means you need to replace with your own address/
 - `data_label [data_label_address]`: specify a data label. This results in `.byte` output.
 
 ## Output Format
-The program prints assembly code to stdout. The output should work with [this header](https://github.com/pret/pokeemerald/blob/master/asm/macros/function.inc), with `.syntax unified` specifed. 
+The program prints assembly code to stdout. The output should work with [this header](https://github.com/pret/pokeemerald/blob/master/asm/macros/function.inc), with `.syntax unified` specifed.
