@@ -2,6 +2,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stddef.h>
 
 #define countof(x) (sizeof(x)/sizeof(x[0]))
 
